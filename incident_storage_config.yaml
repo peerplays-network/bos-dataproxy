@@ -1,0 +1,27 @@
+bos_incidents:
+    database:
+        use: mongodb
+        mongodb:
+            seeds:
+                - localhost:27017  # 94.130.229.63:27017
+            databases: 
+                incident-storage:
+                    collections:
+                        incident:
+                            name: dataproxyincident
+                        event:
+                            name: dataproxyevent
+                        status:
+                            name: dataproxystatus
+        mongodbtest:
+            seeds:
+                - localhost:27017  # 94.130.229.63:27017
+            databases: 
+                incident-storage-test:
+                    collections:
+                        incident:
+                            name: dataproxyincident
+                        event:
+                            name: dataproxyevent
+                        status:
+                            name: dataproxystatus

@@ -1,0 +1,46 @@
+# --------- general settings, normally no need to adjust ------------- 
+dump_folder: dump
+
+logs:
+    file: "dataproxy.log"
+    folder: logs
+    format: "%(asctime)s %(levelname) -10s %(name)s: %(message)s"
+    level: INFO
+
+# --------- custom settings -------------
+
+bookiesports_chain: # bookiesports configuration
+
+incident_format:
+    soccer_advanced_result: False
+
+# configuration of receiving witnesses
+subscriptions:
+# OPTIONAL
+    delay_to_next_witness_in_seconds: 3
+    delay_to_next_witness_only_first: 1
+    delay_before_initial_sending_in_seconds:
+        create: 0
+        in_progress: 0
+        finish: 0
+        result: 300
+    shuffled_subscribers_expires_after_in_hours: 6
+    retry_on_error:
+        delay: 2
+        number: 1
+    # only forward data from the providers given here, applies to all subscribers.
+    whitelist_providers:
+    postfix: /trigger
+
+
+# MANDATORY, must be overwritten
+    mask_providers: # insert any random string that is specific to your provider, will be used for anonymizing provider info
+    witnesses: # list of witnesses
+        - url: # endoint of witness
+          group: # grouping of endpoints (e.g. replaying to only one group)
+          whitelist_providers:
+            - # OPTIONAL; only forward data from the providers given here to this witness
+
+# configuration of incoming data providers
+providers_setting:
+    error_after_no_incident_in_hours: 24

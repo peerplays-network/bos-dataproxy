@@ -1,0 +1,15 @@
+
+bookiesports_chain: baxter
+
+subscriptions:
+    mask_providers: someRandomAndSecretString
+    witnesses:
+        - url: http://1.2.3.4:8011/trigger
+          group: baxterchain
+        - url: http://4.3.2.1:8010/trigger
+          group: baxterchain
+
+providers:
+    some_provider_name:
+        user: max-mustermann@hausen.de
+        password: mypassword

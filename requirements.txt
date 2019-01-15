@@ -1,0 +1,14 @@
+falcon
+gunicorn
+requests
+bitarray
+service
+pika
+jsonschema
+strict_rfc3339
+pyyaml
+pytz
+click
+
+bookiesports
+bos-incidents>=0.1.0
