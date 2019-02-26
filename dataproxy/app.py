@@ -31,16 +31,25 @@ def create_app(raw_store, processed_store, incident_store):
 
     for key, value in provider_config.items():
         if "processor" in value and value["processor"]["type"] == "generic":
-            api.add_route(
-                "/push/" + key, 
-                GenericJsonProcessor(value["processor"].get("timezone", None)),
+            _processor = GenericJsonProcessor(value["processor"].get("timezone", None))
+        else:
+            # search locally for the processor in module <key>.py
+            module = __import__("", fromlist=[key])
+            class_ = getattr(module, "Processor")
+            _processor = _class()
+        logging.getLogger(__name__).info("Loading " + _processor.__class__.__name__ + " for provider " + key)
+        api.add_route(
+            "/push/" + key, 
+            get_push_receiver(
+                key,
+                _processor,
                 value["processor"].get("response", None), 
                 raw_store, 
                 processed_store, 
-                incident_store, 
-                processor
+                incident_store
             )
-    
+        )
+
     from .routes.isalive import IsAlive
     api.add_route("/isalive", IsAlive(incident_store))
 
@@ -76,7 +85,5 @@ def get_app():
     app = create_app(raw_store, processed_store, incident_store)
 
     logging.getLogger(__name__).info("BOS dataproxy uses " + str(versions) + ", has been initialized and is listening to incoming pushes ...")
-
-    
 
     return app

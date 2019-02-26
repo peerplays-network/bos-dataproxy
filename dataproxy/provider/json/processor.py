@@ -8,7 +8,7 @@ class GenericJsonProcessor(JsonProcessor):
     
     def __init__(self, correct_timezone=None):
         super(GenericJsonProcessor, self).__init__()
-        self._correct_timezone = correct_timezone;
+        self._correct_timezone = correct_timezone
     
     def fix_timezone(self, incident):
         """
@@ -19,6 +19,7 @@ class GenericJsonProcessor(JsonProcessor):
         def convert_string_from_tz(date_string, from_timezone=None):
             if from_timezone is None:
                 from_timezone = pytz.timezone(self._correct_timezone)
+
             if "T" in date_string and "Z" in date_string:
                 return date_string
             try:
@@ -41,6 +42,7 @@ class GenericJsonProcessor(JsonProcessor):
                 incident["arguments"]["whistle_end_time"] = convert_string_from_tz(incident["arguments"]["whistle_end_time"])
 
             incident["provider_info"]["tzfix"] = True
+
         return incident
 
     def _process_source(self, source, source_type):
