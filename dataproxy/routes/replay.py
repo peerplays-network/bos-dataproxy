@@ -41,7 +41,8 @@ class Replay(object):
             resp.body = json.dumps(report)
             resp.content_type = falcon.MEDIA_JSON
         else:
-            params["restrict_witness_group"] = "Replay to only the witnesses in this group, default to all groups"
+            params["restrict_witness_group"] = "Deprecated, use target"
+            params["target"] = "This can be a witness name, or witness group. Then replay is only sent to matched witnesses"
             params["provider"] = "Replay only using incidents from this provider, default from all providers"
             params["received"] = "Replay only incidents that were received matching this regex (e.g. 201805 to replay all received in May 2018). If not given it tries to guess the desired range according to the name_filter, if no guess poissble search complete database"
             params["name_filter"] = "Replay only incidents whose id matches this string or match all in comma seperated list (e.g. 'soccer', or '2018-05-31', or 'world  cup', or '2018-05-31,soccer,create'), mandatory."
@@ -49,7 +50,7 @@ class Replay(object):
             params["manufacture"] = "Unique string of an incident to be manufactured, format is specified in bos-incidents/format/incident_to_string"
             resp.body = json.dumps(
                 {
-                    "description": "Searches in the internal file storage of the dataproxy for incidents that match the given parameters and replays them to the chosen witnesses",
+                    "description": "Searches in the internal storage of the dataproxy for incidents that match the given parameters and replays them to the chosen witnesses",
                     "possible_arguments": params
                 }
             )

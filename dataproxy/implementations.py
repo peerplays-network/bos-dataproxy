@@ -19,7 +19,7 @@ from bos_incidents.format import string_to_incident
 from dataproxy.utils import CommonFormat
 
 
-def _send_to_witness(processor, incident, target=None):
+def _send_to_witness(processor, incident, targets=None):
     try:
         initial_delay = Config.get("subscriptions",
                                    "delay_before_initial_sending_in_seconds",
@@ -33,7 +33,7 @@ def _send_to_witness(processor, incident, target=None):
 
         PushReceiver.subscribed_witnesses_status = processor.send_to_witness(
             incident,
-            target=target
+            targets=targets
         )
         received_witnesses = len([key for key, value in PushReceiver.subscribed_witnesses_status.items() if value == "ok"])
         logging.getLogger(__name__).debug("Incident " + incident["unique_string"] + ": Successfully sent to " + str(received_witnesses) + " witnesses")
@@ -43,24 +43,23 @@ def _send_to_witness(processor, incident, target=None):
         logging.getLogger(__name__).exception(e)
 
 
-def _send_list_to_witness(processor, incident_list, target=None, async_queue=True):
+def _send_list_to_witness(processor, incident_list, targets=None, async_queue=True):
     for incident in incident_list:
         logging.getLogger(__name__).info("Trigger sending " + incident["unique_string"])
 
         if async_queue:
             # send to witnesses
             thr = threading.Thread(target=_send_to_witness,
-                                   args=(processor, incident, target,))
+                                   args=(processor, incident, targets,))
             thr.start()  # we dont care when it finishes
         else:
-            _send_to_witness(processor, incident, target=target)
+            _send_to_witness(processor, incident, targets=targets)
 
 
 def process_content(provider_name,
                     processor,
                     processed_store,
                     incident_store,
-                    incident_database,
                     file_content,
                     file_ending,
                     restrict_witness_group=None,
@@ -105,11 +104,11 @@ def process_content(provider_name,
                             file_name=incident["unique_string"])
                         try:
                             logging.getLogger(__name__ + "_" + provider_name).debug(" ... save in incidents database")
-                            incident_database.insert_incident(incident)
+                            incidents_storage.insert_incident(incident)
                         except DuplicateIncidentException:
                             pass
                         except Exception as e:
-                            logging.getLogger(__name__ + "_" + provider_name).info(provider_name + ": INSERT INTO stats failed, continueing anyways, incident file is " + incident_file + "m exception below")
+                            logging.getLogger(__name__ + "_" + provider_name).info(provider_name + ": INSERT INTO stats failed, continueing anyways, incident file is " + incident_file + ", exception below")
                             logging.getLogger(__name__ + "_" + provider_name).exception(e)
                         incident.pop("_id", None)
                         try:
@@ -117,12 +116,12 @@ def process_content(provider_name,
                             if async_queue:
                                 # send to witnesses
                                 thr = threading.Thread(target=_send_to_witness,
-                                                       args=(processor, incident, restrict_witness_group,))
+                                                       args=(processor, incident, _find_targets(restrict_witness_group),))
                                 thr.start()  # we dont care when it finishes
                             else:
-                                _send_to_witness(processor, incident, restrict_witness_group=restrict_witness_group)
+                                _send_to_witness(processor, incident, targets=_find_targets(restrict_witness_group))
                         except Exception as e:
-                            logging.getLogger(__name__ + "_" + provider_name).info(provider_name + ": PUSH to witness failed, continueing anyways, incident file is " + incident_file + "m exception below")
+                            logging.getLogger(__name__ + "_" + provider_name).info(provider_name + ": PUSH to witness failed, continueing anyways, incident file is " + incident_file + ", exception below")
                             logging.getLogger(__name__ + "_" + provider_name).exception(e)
         except Exception as e:
             logging.getLogger(__name__ + "_" + provider_name).info(provider_name + ": Processing failed, continueing anyways. Source file is " + file_name + ", exception below")
@@ -135,6 +134,19 @@ def process_content(provider_name,
         "do_not_send_to_witness": do_not_send_to_witness,
         "is_interesting": is_interesting
     }
+
+
+def _find_targets(target):
+    matched = []
+    for witness in Config.get("subscriptions", "witnesses"):
+        if target is not None:
+            if target == witness.get("group", None):
+                matched.append(witness)
+            elif target == witness["url"] or target == witness.get("name", None):
+                matched.append(witness)
+        else:
+            matched.append(witness)
+    return matched
 
 
 def replay(restrict_witness_group=None,
@@ -159,7 +171,6 @@ def replay(restrict_witness_group=None,
 
     replay_stats = {}
     replay_stats["async_execution"] = async_execution
-    replay_stats["restrict_witness_group"] = restrict_witness_group
     replay_stats["target"] = target
 
     if providers is None:
@@ -173,6 +184,15 @@ def replay(restrict_witness_group=None,
         processor = JsonProcessor()
 
     replay_stats["processor"] = processor.__class__.__name__
+
+    if restrict_witness_group is not None:
+        target = restrict_witness_group
+
+    matched_targets = _find_targets(target)
+    replay_stats["matched_targets"] = len(matched_targets)
+    if len(matched_targets) == 0:
+        logging.getLogger(__name__).info("Replay: No matched witnesses found for target " + target)
+        return replay_stats
 
     if incidents is None:
         incidents = []
@@ -213,22 +233,53 @@ def replay(restrict_witness_group=None,
         for provider in providers:
             folder_filter.append(provider)
         if received is None:
-            received = "2018"
+            received = ["20181", "2019"]
         if type(received) == str:
             received = [received]
         for tmp in received:
             folder_filter.append(tmp)
 
         replay_stats["folder_filter"] = folder_filter
-
         replay_stats["name_filter"] = name_filter
 
-        logging.getLogger(__name__).info("Replay: Finding all incidents with configuration " + str(replay_stats))
+        logging.getLogger(__name__).info("Replay: Finding all incidents in file dump with configuration " + str(replay_stats))
         for incident in processor.process_generic(
                 folder="dump/d_incidents",
                 folder_filter=folder_filter,
                 name_filter=name_filter):
             incidents.append(incident)
+
+        if len(received) == 2:
+            logging.getLogger(__name__).info("Replay: Querying local database for incidents")
+            regex_filter = ".*".join(name_filter) + ".*"
+            # Only prepend ".*" if there expected to be anything beforehand
+            if not regex_filter.startswith("201"):
+                # cover all years 2010-2029
+                regex_filter = ".*" + regex_filter
+
+            try:
+                #if len(received) == 1:
+                #    if len(received[0]) == 8:
+                #        _from = datetime(received[0][0:4], received[0][4:6], received[0][6:8], 0, 0, tzinfo=tzutc())
+                #        _till = datetime(received[0][0:4], received[0][4:6], received[0][6:8], 23, 59, tzinfo=tzutc()) 
+                #    elif len(received[0]) == 6:
+                #        _from = datetime(received[0][0:4], received[0][4:6], 1, 0, 0, tzinfo=tzutc())
+                #        _till = datetime(received[0][0:4], received[0][4:6], 28, 23, 59, tzinfo=tzutc())
+                #else: 
+                #    _from = None
+                for incident in incidents_storage.get_incidents(
+                    dict(
+                        unique_string={"$regex": regex_filter, "$options": "i"}#,
+                        #timestamp={"$lt": float(_till.timestamp()), "$gt": float(_from.timestamp())}
+                    )
+                ):
+                    # don't add duplicates
+                    if incident["provider_info"]["name"] + "-" + incident["unique_string"] not in [x["provider_info"]["name"] + "-" + x["unique_string"] for x in incidents]:
+                        incidents.append(incident)
+            except Exception as e:
+                logging.getLogger(__name__).warning("MongoDB not reachable, continueing anyways" + str(e))
+                pass
+
     else:
         if type(incidents) == str:
             incidents = [incidents]
@@ -251,47 +302,20 @@ def replay(restrict_witness_group=None,
 
     logging.getLogger(__name__).info("Found " + str(len(incident_ids)) + " incidents.")
 
-    match_found = True
-    for witness in Config.get("subscriptions", "witnesses"):
-        if restrict_witness_group is not None:
-            match_found = restrict_witness_group == witness["group"]
-
-        if target is not None:
-            match_witness = (
-                target == witness["url"] or
-                target == witness.get("name", None)
-            )
-            match_found = match_found and match_witness
-        if match_found:
-            break
-
-    if not match_found:
-        logging.getLogger(__name__).info("Replay: No matching witnesses found")
-        replay_stats["any_matched_witnesses"] = False
-        return replay_stats
-
-    replay_stats["any_matched_witnesses"] = True
-
     if not only_report:
         sorted_list = sorted(incidents, key=lambda k: k['provider_info']['pushed'])
         logging.getLogger(__name__).info("Replay: Sorted " + str(len(sorted_list)) + " incidents ...")
 
-        if restrict_witness_group is not None or target is not None:
-            target = {
-                "chain": restrict_witness_group,
-                "witness": target
-            }
-
         if async_execution:
             # send to witnesses
             thr = threading.Thread(target=_send_list_to_witness,
-                                   args=(processor, sorted_list, target, async_queue))
+                                   args=(processor, sorted_list, matched_targets, async_queue))
             thr.start()  # we dont care when it finishes
             replay_stats["incidents_sent"] = True
         else:
             number = _send_list_to_witness(processor,
                                            sorted_list,
-                                           target=target,
+                                           targets=matched_targets,
                                            async_queue=async_queue)
             replay_stats["incidents_sent"] = number
     else:

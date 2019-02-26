@@ -21,7 +21,7 @@ class GenericProcessor(ABC):
     SHUFFLED_SUBSCRIBERS_EXPIRES = None
 
     @staticmethod
-    def get_timed_shuffled_subscribers():
+    def get_timed_shuffled_subscribers(targets=None):
         now = datetime.utcnow()
 
         try:
@@ -59,7 +59,19 @@ class GenericProcessor(ABC):
                 hours=Config.get("subscriptions", "shuffled_subscribers_expires_after_in_hours", 6)
             )
             logging.getLogger(__name__).debug("Shuffled witnesses: " + str(GenericProcessor.SHUFFLED_SUBSCRIBERS_PER_GROUP))
-        return GenericProcessor.SHUFFLED_SUBSCRIBERS_PER_GROUP
+
+        if targets is not None:
+            return_value = {}
+            # filter out non targets
+            for group in GenericProcessor.SHUFFLED_SUBSCRIBERS_PER_GROUP.keys():
+                for witness in GenericProcessor.SHUFFLED_SUBSCRIBERS_PER_GROUP[group]:
+                    if witness["url"] in [x["url"] for x in targets]:
+                        if return_value.get(group, None) is None:
+                            return_value[group] = []
+                        return_value[group].append(witness)
+            return return_value
+        else:
+            return GenericProcessor.SHUFFLED_SUBSCRIBERS_PER_GROUP
 
     """ Processes interesting parsed files from a provider push and searches for incidents """
     def __init__(self, file_ending=None, file_cache_store=None):
@@ -187,6 +199,7 @@ class GenericProcessor(ABC):
                 source = self._parse_raw(io.open(source, encoding="utf-8").read())
                 if not source or not self.source_of_interest(source):
                     continue
+            incident = None
             try:
                 # file or string?
                 # TODO rework how files are recognized
@@ -218,7 +231,7 @@ class GenericProcessor(ABC):
                     message = str(incident)
                 else:
                     message = str(source)
-                logging.getLogger(__name__).error("Error parsing " + message)
+                logging.getLogger(__name__).error("Error parsing, " + str(e) + "\n" + message)
                 if not self._skip_on_error:
                     raise e
         return incidents.values()
@@ -278,7 +291,7 @@ class GenericProcessor(ABC):
                 else:
                     raise e
 
-    def send_to_witness(self, incident, target=None):
+    def send_to_witness(self, incident, targets=None):
         unmasked_provider_info = incident["provider_info"]
 
         mask = Config.get("subscriptions", "mask_providers", default=True)
@@ -298,27 +311,14 @@ class GenericProcessor(ABC):
 
         subscribed_witnesses_status = {}
 
-        shuffled_per_group = GenericProcessor.get_timed_shuffled_subscribers()
+        shuffled_per_group = GenericProcessor.get_timed_shuffled_subscribers(targets)
         delay_to_next = Config.get("subscriptions", "delay_to_next_witness_in_seconds", 30)
         delay_first = Config.get("subscriptions", "delay_to_next_witness_only_first", 4)
 
         for group in shuffled_per_group.keys():
-            if target is not None:
-                # only string is chain
-                if type(target) == str:
-                    if not target == group or target == "skip":
-                        continue
-                elif type(target) == dict:
-                    if target.get("chain", None) is not None:
-                        if not target["chain"] == group:
-                            continue
             remaining_to_delay = delay_first
 
             for witness in shuffled_per_group[group]:
-                if target is not None and type(target) == dict:
-                    if target.get("witness", None) is not None:
-                        if not target["witness"] == witness["url"] and not target["witness"] == witness.get("name", ""):
-                            continue
                 witness_url = witness["url"] + Config.get("subscriptions", "postfix", default="/trigger")
                 subscribed_witnesses_send = witness.get("whitelist_providers", None)
                 if subscribed_witnesses_send is not None and\

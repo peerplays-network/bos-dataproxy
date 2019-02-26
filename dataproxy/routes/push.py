@@ -8,7 +8,6 @@ import urllib
 
 import logging
 
-from bos_incidents import factory
 
 ALLOWED_FILE_TYPES = (
     "multipart/form-data"
@@ -64,7 +63,6 @@ class PushReceiver(object):
         self._incidents_store = incidents_store
         self._raw_store = raw_store
         self._provider_processor = provider_processor
-        self.incident_database = None
 
     def on_get(self, req, resp):
         resp.body = "Waiting for POST push notifications from " +\
@@ -94,15 +92,11 @@ class PushReceiver(object):
     def process_content(self, file_content, file_ending, restrict_witness_group=None, async_queue=True):
         from .. import implementations
 
-        if self.incident_database is None:
-            self.incident_database = factory.get_incident_storage()
-
         return implementations.process_content(
             self._provider_name,
             self._provider_processor,
             self._processed_store,
             self._incidents_store,
-            self.incident_database,
             file_content,
             file_ending,
             restrict_witness_group=restrict_witness_group,
