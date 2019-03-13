@@ -1,0 +1,23 @@
+{
+	"call": "in_progress",
+	"id": {
+		"sport": "Soccer",
+		"event_group_name": "LaLiga",
+		"away": "Real Madrid",
+		"start_time": "2019-02-24T19:45:00Z",
+		"home": "Levante"
+	},
+	"arguments": {
+		"whistle_start_time": "2019-02-24T19:46:03.545Z"
+	},
+	"unique_string": "2019-02-24t194500z__soccer__laliga__levante__real-madrid__in_progress__2019-02-24t194603545z",
+	"provider_info": {
+		"source": "direct string input",
+		"pushed": "2019-02-24T19:46:03.782Z",
+		"name": "scorespro",
+		"bitArray": "01000001100",
+		"source_file": "20190224-194603_0e3f9539-ab87-418a-8a7a-32506f65d922.xml",
+		"match_id": "1597251"
+	},
+	"timestamp": "2019-02-24T19:46:03Z"
+}

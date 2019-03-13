@@ -1,0 +1,23 @@
+{
+	"arguments": {
+		"whistle_start_time": "2019-01-25T01:02:59Z"
+	},
+	"provider_info": {
+		"bed_id": "96093",
+		"source_file": "20190125-020339_99f3aeb6-19e2-4d6d-bfc6-61c56ffbec18.json",
+		"source": "event_id=2865094",
+		"name": "enetpulse",
+		"pushed": "2019-01-25T01:03:38Z",
+		"tzfix": true
+	},
+	"id": {
+		"sport": "Basketball",
+		"home": "Washington Wizards",
+		"event_group_name": "NBA Regular Season",
+		"away": "Golden State Warriors",
+		"start_time": "2019-01-25T01:00:00Z"
+	},
+	"call": "in_progress",
+	"timestamp": "2019-01-25T01:03:39Z",
+	"unique_string": "2019-01-25t010000z__basketball__nba-regular-season__washington-wizards__golden-state-warriors__in_progress__2019-01-25t010259z"
+}

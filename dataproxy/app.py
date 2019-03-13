@@ -4,7 +4,7 @@ import pkg_resources
 
 from .stores import RawStore, ProcessedFileStore,\
     IncidentFileStore, CacheFileStore
-    
+
 from .routes.push import PushReceiver
 from .provider.json.processor import GenericJsonProcessor
 from . import Config
@@ -35,17 +35,17 @@ def create_app(raw_store, processed_store, incident_store):
         else:
             # search locally for the processor in module <key>.py
             module = __import__("", fromlist=[key])
-            class_ = getattr(module, "Processor")
+            _class = getattr(module, "Processor")
             _processor = _class()
         logging.getLogger(__name__).info("Loading " + _processor.__class__.__name__ + " for provider " + key)
         api.add_route(
-            "/push/" + key, 
+            "/push/" + key,
             get_push_receiver(
                 key,
                 _processor,
-                value["processor"].get("response", None), 
-                raw_store, 
-                processed_store, 
+                value["processor"].get("response", None),
+                raw_store,
+                processed_store,
                 incident_store
             )
         )

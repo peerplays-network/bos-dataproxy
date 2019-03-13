@@ -1,0 +1,24 @@
+{
+	"unique_string": "2019-02-24t173000z__ice-hockey__nhl-regular-season__washington-capitals__new-york-rangers__in_progress__2019-02-24t174929769358z",
+	"provider_info": {
+		"status": 2,
+		"msg_guid": "df039747-9e33-4e45-8d93-8bd605f9f3e9",
+		"source_file": "20190224-125012_108f8c94-0d56-4f0a-964d-fe0cd4a6d870.json",
+		"fixture_id": 3895120,
+		"name": "lsports",
+		"pushed": "2019-02-24T17:50:12Z",
+		"header_type": 1
+	},
+	"id": {
+		"start_time": "2019-02-24T17:30:00Z",
+		"home": "Washington Capitals",
+		"event_group_name": "NHL Regular Season",
+		"away": "New York Rangers",
+		"sport": "Ice Hockey"
+	},
+	"arguments": {
+		"whistle_start_time": "2019-02-24T17:49:29.769358Z"
+	},
+	"timestamp": "2019-02-24T17:50:12Z",
+	"call": "in_progress"
+}

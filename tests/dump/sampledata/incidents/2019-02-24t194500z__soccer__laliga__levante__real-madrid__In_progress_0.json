@@ -1,0 +1,24 @@
+{
+	"unique_string": "2019-02-24t194500z__soccer__laliga__levante__real-madrid__in_progress__2019-02-24t194601221z",
+	"provider_info": {
+		"status": 2,
+		"msg_guid": "29ff3d9b-d5ad-44b2-8a0c-e5d40fe7cf2c",
+		"source_file": "20190224-143034_c66ae72e-3ec8-4d6f-98d3-633409e40a64.json",
+		"fixture_id": 3944165,
+		"name": "lsports",
+		"pushed": "2019-02-24T19:46:01Z",
+		"header_type": 1
+	},
+	"id": {
+		"start_time": "2019-02-24T19:45:00Z",
+		"home": "Levante",
+		"event_group_name": "LaLiga",
+		"away": "Real Madrid",
+		"sport": "Soccer"
+	},
+	"arguments": {
+		"whistle_start_time": "2019-02-24T19:46:01.221Z"
+	},
+	"timestamp": "2019-02-24T19:46:01Z",
+	"call": "in_progress"
+}

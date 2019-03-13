@@ -1,0 +1,24 @@
+{
+	"call": "result",
+	"id": {
+		"sport": "Soccer",
+		"event_group_name": "LaLiga",
+		"away": "Real Madrid",
+		"start_time": "2019-02-24T19:45:00Z",
+		"home": "Levante"
+	},
+	"arguments": {
+		"away_score": "2",
+		"home_score": "1"
+	},
+	"unique_string": "2019-02-24t194500z__soccer__laliga__levante__real-madrid__result__1-2",
+	"provider_info": {
+		"source": "direct string input",
+		"pushed": "2019-02-24T21:36:00.143Z",
+		"name": "scorespro",
+		"bitArray": "00000001100",
+		"source_file": "20190224-213600_3b45b125-46f6-4aa5-95c9-180e806def8b.xml",
+		"match_id": "1597251"
+	},
+	"timestamp": "2019-02-24T21:36:00Z"
+}

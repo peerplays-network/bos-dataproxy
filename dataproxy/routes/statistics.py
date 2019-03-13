@@ -14,39 +14,9 @@ class GetStatistics(object):
         resp.status = falcon.HTTP_200
         logging.getLogger(__name__).info("GET statistics received from " + req.remote_addr)
 
-    def sync_storage(self, storage):
-        from .. import utils
-        from ..processors import JsonProcessor
-
-        parser = JsonProcessor()
-
-        providers = list(Config.get("providers", default={}).keys())
-        providers.append("2018")
-        providers.append("2019")
-
-        for incident in parser.process_generic(
-                folder="dump/d_incidents",
-                folder_filter=providers,
-                name_filter="soccer"
-        ):
-            if not storage.incident_exists(incident):
-                # start beginning of april
-                if incident["id"]["start_time"].startswith("2018-05"):
-                    storage.insert_incident(incident)
-                    logging.getLogger(__name__).info("Inserting " + str(incident))
-
-            _incident_date = utils.string_to_date(incident["provider_info"]["pushed"])
-#             if not last_pushed:
-#                 last_pushed = _incident_date
-#             else:
-#                 if last_pushed < _incident_date:
-#                     last_pushed = _incident_date
-#         storage.set_status({"last_inserted": last_pushed})
-
     def get_statistics(self, storage=None):
         if storage is None:
             storage = factory.get_incident_storage()
-        print(storage._mongodb_config)
 
         events = storage.get_events()
         providers = []
@@ -66,7 +36,6 @@ class GetStatistics(object):
     def get_statistics_string(self, storage=None):
         if storage is None:
             storage = factory.get_incident_storage()
-        print(storage._mongodb_config)
 
         events = storage.get_events()
         providers = []
