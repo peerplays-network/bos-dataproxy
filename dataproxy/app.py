@@ -8,6 +8,7 @@ from .stores import RawStore, ProcessedFileStore,\
 from .routes.push import PushReceiver
 from .provider.json.processor import GenericJsonProcessor
 from . import Config
+import threading
 
 
 def get_push_receiver(provider_name, provider_processor, provider_success_response, raw_store, processed_store, incident_store):
@@ -29,14 +30,35 @@ def create_app(raw_store, processed_store, incident_store):
 
     provider_config = Config.get("providers", default={})
 
+    background_threads = []
+
     for key, value in provider_config.items():
         if "processor" in value and value["processor"]["type"] == "generic":
             _processor = GenericJsonProcessor(value["processor"].get("timezone", None))
         else:
             # search locally for the processor in module <key>.py
-            module = __import__("", fromlist=[key])
+            module = __import__(key, fromlist=[key])
             _class = getattr(module, "Processor")
             _processor = _class()
+
+            # check if a thread is necessary
+            try:
+                _class = getattr(module, "BackgroundThread")
+                _object = _class()
+                background_threads.append(
+                    threading.Thread(
+                        name=_object.getName(),
+                        target=_object.run
+                    )
+                )
+            except AttributeError:
+                pass
+
+        # start all background threads
+        for t in background_threads:
+            logging.getLogger(__name__).info("Starting thread for {}".format(t))
+            t.start()
+
         logging.getLogger(__name__).info("Loading " + _processor.__class__.__name__ + " for provider " + key)
         api.add_route(
             "/push/" + key,
@@ -51,7 +73,7 @@ def create_app(raw_store, processed_store, incident_store):
         )
 
     from .routes.isalive import IsAlive
-    api.add_route("/isalive", IsAlive(incident_store))
+    api.add_route("/isalive", IsAlive(incident_store, background_threads))
 
     from .routes.statistics import GetStatistics
     api.add_route("/statistics", GetStatistics())

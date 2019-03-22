@@ -28,8 +28,12 @@ class IsAlive(object):
         This isalive can be called from localhost and from anywhere. No identifiable information on providers or subscribers is published when queried from anywhere. Details are added when it is called from localhost.
     """
 
-    def __init__(self,
-                 incidents_store):
+    def __init__(
+        self,
+        incidents_store,
+        background_threads
+    ):
+        self._background_threads = background_threads
         self._incidents_store = incidents_store
 
     def on_get(self, req, resp):
@@ -151,5 +155,22 @@ class IsAlive(object):
             except pkg_resources.DistributionNotFound:
                 versions[name] = "not installed"
         message["versions"] = versions
+
+        background_threads_dict = []
+        for t in self._background_threads:
+            try:
+                _thread_dict = {"running": t.is_alive()}
+                _masked_name = t.name + CommonFormat.MASK
+                _masked_name = hashlib.md5(_masked_name.encode()).hexdigest()
+                if mask_names:
+                    _thread_dict["name"] = _masked_name
+                else:
+                    _thread_dict["name"] = t.name
+                    _thread_dict["hash"] = _masked_name
+                background_threads_dict.append(_thread_dict)
+            except Exception as e:
+                logging.getLogger(__name__).error("Error in background task: {}".format(str(e)))
+
+        message["background"] = background_threads_dict
 
         return message

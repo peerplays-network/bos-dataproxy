@@ -5,11 +5,11 @@ from dataproxy import utils
 
 
 class GenericJsonProcessor(JsonProcessor):
-    
+
     def __init__(self, correct_timezone=None):
         super(GenericJsonProcessor, self).__init__()
         self._correct_timezone = correct_timezone
-    
+
     def fix_timezone(self, incident):
         """
         The provider_info may contain the wrong timezone, this allows to adjust it

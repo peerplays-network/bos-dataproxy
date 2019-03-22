@@ -6,7 +6,7 @@ service
 pika
 jsonschema
 strict_rfc3339
-pyyaml
+pyyaml==3.13
 pytz
 click
 
