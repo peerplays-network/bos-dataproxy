@@ -9,9 +9,18 @@ from .routes.push import PushReceiver
 from .provider.json.processor import GenericJsonProcessor
 from . import Config
 import threading
+import os
 
 
-def get_push_receiver(provider_name, provider_processor, provider_success_response, raw_store, processed_store, incident_store):
+def get_push_receiver(provider_name, provider_processor, provider_success_response=None, raw_store=None, processed_store=None, incident_store=None):
+    if provider_success_response is None:
+        provider_success_response = Config.get(provider_name, "processor", "response", default="RECEIVED_OK")
+    if raw_store is None:
+        raw_store = RawStore()
+    if processed_store is None:
+        processed_store = ProcessedFileStore()
+    if incident_store is None:
+        incident_store = IncidentFileStore()
     return PushReceiver(
         raw_store,
         processed_store,
@@ -38,6 +47,15 @@ def create_app(raw_store, processed_store, incident_store):
         else:
             # search locally for the processor in module <key>.py
             module = __import__(key, fromlist=[key])
+
+            _config_file = value.get("config_file", None)
+            if _config_file is None:
+                _config_file = "config-" + key + ".yaml"
+            else:
+                _config_file = _config_file + ".yaml"
+            if os.path.isfile(_config_file):
+                Config.load(_config_file, True)
+
             _class = getattr(module, "Processor")
             _processor = _class()
 

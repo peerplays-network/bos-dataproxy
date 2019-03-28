@@ -6,6 +6,12 @@ import pytz
 def date_to_string(date_object=None):
     """ rfc3339 conform string represenation of a date
         can also be given as str YYYY-mm-dd HH:MM:SS """
+    if date_object is not None:
+        try:
+            date_object = float(date_object)
+        except ValueError:
+            pass
+
     if type(date_object) == int:
         if date_object < 365:
             date_object = datetime.utcnow() + timedelta(days=date_object)

@@ -89,6 +89,17 @@ class GenericProcessor(ABC):
         else:
             self._debug_identifiers = identifiers
 
+    def _matches_if_debug(self, incident):
+        if self._debug_identifiers is None:
+            return True
+        matches = False
+        _incident_string = json.dumps(incident).lower()
+        for _identifier in self._debug_identifiers:
+            matches = str(_identifier).lower() in _incident_string
+            if matches:
+                return matches
+        return False
+
     def process_generic(self,
                         files=None,
                         folder=None,
@@ -214,6 +225,8 @@ class GenericProcessor(ABC):
                     for incident in incidentList:
                         # ignore unkown
                         if incident["call"] == "unknown":
+                            continue
+                        if not self._matches_if_debug(incident):
                             continue
                         # ensure the json format is correct
                         incident = CommonFormat().prepare_for_dump(incident)

@@ -1,6 +1,10 @@
 # --------- general settings, normally no need to adjust ------------- 
 dump_folder: dump
 
+wsgi:
+    port: 8010
+    host: localhost
+
 logs:
     file: "dataproxy.log"
     folder: logs

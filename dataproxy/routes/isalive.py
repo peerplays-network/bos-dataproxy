@@ -39,8 +39,7 @@ class IsAlive(object):
     def on_get(self, req, resp):
         resp.body = json.dumps(self.get_is_alive_message(req.remote_addr != "127.0.0.1"))
         resp.status = falcon.HTTP_200
-        resp.content_type = "application/json"
-        logging.getLogger(__name__).info("GET isalive received from " + req.remote_addr)
+        resp.content_type = falcon.MEDIA_JSON
 
     def _mask_ip_in_message(self, witness_url, status):
         try:
@@ -102,7 +101,7 @@ class IsAlive(object):
                 if list_of_files:
                     latest_file = max(list_of_files, key=os.path.getctime)
                     latest_ctime = os.path.getctime(latest_file)
-                    print(datetime.datetime.now().timestamp() - latest_ctime)
+
                     if datetime.datetime.now().timestamp() - latest_ctime < Config.get("providers_setting", "error_after_no_incident_in_hours", 24) * 60 * 60:
                         status = "ok"
                     else:

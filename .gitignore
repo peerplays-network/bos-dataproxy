@@ -1,0 +1,14 @@
+# Add any directories, files, or patterns you don't want to be tracked by version control
+.directory
+.settings
+__pycache__
+tests/dump/cache
+dump
+env
+provider-eval
+delivery
+provider-wrapper/enetpulse/push/enetpulse/spocosy/files/parsed/*.xml
+provider-wrapper/enetpulse/mysql-udf-http/curl-7.57.0
+provider-wrapper/enetpulse/mysql-udf-http/curl-7.57.0.tar.gz
+provider-wrapper/enetpulse/mysql-udf-http/mysql-udf-http-1.0
+provider-wrapper/enetpulse/mysql-udf-http/mysql-udf-http-1.0.tar.gz

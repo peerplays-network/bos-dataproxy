@@ -29,9 +29,10 @@ def validate_pusher(req, resp, resource, params):
     """ Only allow pushes from ALLOWED_PUSHER adresses """
     if req.remote_addr not in ALLOWED_PUSHER:
         msg = 'This remote address is not white listed'
-        print(time.strftime("%Y-%m-%d %H:%M:%S") +
-              ": Request denied, remote address " +
-              req.remote_addr + " not white listed")
+        logging.getLogger(__name__).warning(
+            "Request denied, remote address " +
+            req.remote_addr + " not white listed"
+        )
         raise falcon.HTTPBadRequest('Bad request', msg)
 
 
@@ -89,8 +90,11 @@ class PushReceiver(object):
     def on_post(self, req, resp, raw_file_content=None):
         self.process(req, resp, raw_file_content=raw_file_content)
 
-    def process_content(self, file_content, file_ending, restrict_witness_group=None, async_queue=True):
+    def process_content(self, file_content, file_ending, restrict_witness_group=None, async_queue=True, target=None):
         from .. import implementations
+
+        if restrict_witness_group is None and target is not None:
+            restrict_witness_group = target
 
         return implementations.process_content(
             self._provider_name,
@@ -132,8 +136,11 @@ class PushReceiver(object):
                             "Bad request",
                             "Sent file does not have any content")
                     file_ending = ".xml"
+                except KeyError as e:
+                    pass
                 except Exception as e:
-                    print(e)
+                    logging.getLogger(__name__).warning("Exception occured during processing, continueing anyways ...")
+                    logging.getLogger(__name__).exception(e)
 
                 if not file_content:
                     try:
@@ -146,9 +153,11 @@ class PushReceiver(object):
                                 "Sent file does not have any content")
                         file_ending = ".json"
                     except Exception as e:
-                        print(e)
+                        logging.getLogger(__name__).warning("Exception occured during processing, continueing anyways ...")
+                        logging.getLogger(__name__).exception(e)
             except ValueError as e:
-                print(e)
+                logging.getLogger(__name__).warning("Exception occured during processing, continueing anyways ...")
+                logging.getLogger(__name__).exception(e)
 
         elif "application/x-www-form-urlencoded" in req.content_type:
             file_content = urllib.parse.unquote(raw_file_content)

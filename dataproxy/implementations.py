@@ -15,8 +15,14 @@ from strict_rfc3339 import InvalidRFC3339Error
 from . import utils
 from .utils import slugify
 from datetime import timedelta
+
 from bos_incidents.format import string_to_incident
+from bos_incidents import factory
+
 from dataproxy.utils import CommonFormat
+
+
+incidents_storage = factory.get_incident_storage()
 
 
 def _send_to_witness(processor, incident, targets=None):
@@ -62,9 +68,13 @@ def process_content(provider_name,
                     incident_store,
                     file_content,
                     file_ending,
-                    restrict_witness_group=None,
-                    async_queue=True):
+                    restrict_witness_group=None,  # deprecated
+                    async_queue=True,
+                    target=None):
     file_name = None
+
+    if restrict_witness_group is None and target is not None:
+        restrict_witness_group = target
 
     # before storing, check if its worth processing
     is_interesting = file_content is not None
