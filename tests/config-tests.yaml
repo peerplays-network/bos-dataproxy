@@ -1,0 +1,25 @@
+providers:
+    radish:
+        name: fake_radish
+        documentation: 
+            - some_url
+        api:
+            upcoming: some_url
+            upcoming2:  some_url
+            leagues: some_url
+            results: some_url
+        user: fake_name
+        token: fake_token
+        processor:
+            type: pushed
+            response: JSON_RECEIVED_OK            
+        polling_in_seconds: 60
+        recognize:
+            sports:
+                - name: "Soccer"
+                  id: 1
+            leagues:
+                - id: 1
+                  name: "England Premier League"
+                  sport_id: 1
+                

@@ -45,17 +45,11 @@ def create_app(raw_store, processed_store, incident_store):
         if "processor" in value and value["processor"]["type"] == "generic":
             _processor = GenericJsonProcessor(value["processor"].get("timezone", None))
         else:
-            # search locally for the processor in module <key>.py
-            module = __import__(key, fromlist=[key])
-
-            _config_file = value.get("config_file", None)
-            if _config_file is None:
-                _config_file = "config-" + key + ".yaml"
-            else:
-                _config_file = _config_file + ".yaml"
-            if os.path.isfile(_config_file):
-                Config.load(_config_file, True)
-
+            module_to_load = Config.get("providers", key, "module", default=key)
+            try:
+                module = __import__(module_to_load, fromlist=[module_to_load])
+            except ModuleNotFoundError:
+                module = __import__("dataproxy.provider.modules." + module_to_load, fromlist=[module_to_load])
             _class = getattr(module, "Processor")
             _processor = _class()
 

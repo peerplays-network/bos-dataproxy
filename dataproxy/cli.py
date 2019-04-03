@@ -26,7 +26,21 @@ def wsgi(
 
 
 def _load_module(provider):
-    module = __import__(provider, fromlist=[provider])
+    module_to_load = None
+    try:
+        Config.get("providers", provider)
+        module_to_load = Config.get("providers", provider, "module", default=provider)
+    except KeyError:
+        all_providers = Config.get("providers")
+        for key, value in all_providers.items():
+            if value.get("name", None) == provider:
+                module_to_load = key
+    if module_to_load is None:
+        raise Exception("Unsupported provider")
+    try:
+        module = __import__(module_to_load, fromlist=[module_to_load])
+    except ModuleNotFoundError:
+        module = __import__("dataproxy.provider.modules." + module_to_load, fromlist=[module_to_load])
     _class = getattr(module, "CommandLineInterface")
     return _class()
 

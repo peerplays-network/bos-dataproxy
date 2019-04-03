@@ -1,12 +1,19 @@
 import unittest
+import json
 
 from os import listdir
 from os.path import isfile, join
 
+from dataproxy import Config
 
 from bos_incidents import factory
 from bos_incidents.mongodb_storage import IncidentNotFoundException
-import json
+
+
+class TestWithConfig(unittest.TestCase):
+
+    def setUp(self):
+        Config.load("config-tests.yaml", True)
 
 
 class TestWithSampleIncidents(unittest.TestCase):

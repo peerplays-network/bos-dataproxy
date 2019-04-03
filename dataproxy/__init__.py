@@ -217,6 +217,17 @@ def on_startup():
         IncidentsNormalizer.NOT_FOUND_FILE = os.path.join(Config.get("dump_folder"), "missing_bookiesports_entries.txt")
         logging.getLogger(__name__).debug("Incidents normalizer set for chain " + IncidentsNormalizer.DEFAULT_CHAIN + ", using " + str(IncidentsNormalizer.NOT_FOUND_FILE) + " for missing entries")
 
+    providers = list(Config.get("providers", default={}).keys())
+    for key in providers:
+        # check and load optional provider configs
+        _config_file = Config.get("providers", key).get("config_file", None)
+        if _config_file is None:
+            _config_file = "config-" + key + ".yaml"
+        else:
+            _config_file = _config_file + ".yaml"
+        if os.path.isfile(_config_file):
+            Config.load(_config_file, True)
+
 
 if not Config.data:
     Config.load("config-defaults.yaml")
