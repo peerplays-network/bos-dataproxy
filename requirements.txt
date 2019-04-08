@@ -12,3 +12,4 @@ click
 
 bookiesports
 bos-incidents>=0.1.0
+pycryptodome==3.8.0
