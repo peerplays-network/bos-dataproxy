@@ -11,6 +11,8 @@ def date_to_string(date_object=None):
             date_object = float(date_object)
         except ValueError:
             pass
+        except TypeError:
+            pass
 
     if type(date_object) == int:
         if date_object < 365:
