@@ -71,7 +71,7 @@ def create_app(raw_store, processed_store, incident_store):
             logging.getLogger(__name__).info("Starting thread for {}".format(t))
             t.start()
 
-        logging.getLogger(__name__).info("Loading " + _processor.__class__.__name__ + " for provider " + key)
+        logging.getLogger(__name__).info("Adding provider " + key + ", route " + "/push/" + key)
         api.add_route(
             "/push/" + key,
             get_push_receiver(

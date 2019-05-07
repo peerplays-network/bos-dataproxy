@@ -1,11 +1,12 @@
 import click
+import logging
 
 from wsgiref import simple_server
 from pprint import pprint
 
 from .app import get_app
 from . import Config
-import logging
+from . import implementations
 
 
 @click.group()
@@ -43,6 +44,23 @@ def _load_module(provider):
         module = __import__("dataproxy.provider.modules." + module_to_load, fromlist=[module_to_load])
     _class = getattr(module, "CommandLineInterface")
     return _class()
+
+
+@main.command()
+@click.argument("provider")
+@click.option("--received")
+@click.option("--name_filter")
+@click.option("--target")
+@click.option("--async_queue")
+def replay(provider, received=None, name_filter=None, target=None, async_queue=False):
+    response = implementations.replay(
+        providers=provider,
+        received=received,
+        name_filter=name_filter,
+        target=target,
+        async_queue=async_queue
+    )
+    pprint(response)
 
 
 @main.command()

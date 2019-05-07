@@ -11,6 +11,8 @@ from ... import utils
 from ...app import get_push_receiver
 from ...datestring import date_to_string
 
+from bookiesports.normalize import IncidentsNormalizer, NotNormalizableException
+
 """
     Provider module, actual name obfuscated
 """
@@ -25,7 +27,7 @@ def _get(*args, **kwargs):
 
 
 def logged_json_get(url):
-    logging.getLogger(__name__).debug("[GET] " + url)
+    logging.getLogger(__name__).info("[GET] " + url)
     json_payload = utils.save_json_loads(
         requests.get(
             url,
@@ -34,6 +36,30 @@ def logged_json_get(url):
     )
     if "error" in json_payload:
         raise Exception(url + ": " + json_payload["error"])
+    if "pager" in json_payload:
+        # fetch all
+        _paged_results = [json_payload]
+        while _paged_results[len(_paged_results) - 1]["pager"]["per_page"] == len(_paged_results[len(_paged_results) - 1]["results"]):
+            _url = url + "&page=" + str(_paged_results[len(_paged_results) - 1]["pager"]["page"] + 1)
+            logging.getLogger(__name__).info("[GET] " + _url)
+            # we received a full page, query next
+            _paged_results.append(
+                utils.save_json_loads(
+                    requests.get(
+                        _url,
+                        timeout=_get("timeout", 2)
+                    ).content
+                )
+            )
+        # merge results
+        json_payload = {
+            "success": _paged_results[0]["success"],
+            "pager": _paged_results[0]["pager"],
+            "results": []
+        }
+        for _json_payload in _paged_results:
+            for _event in _json_payload["results"]:
+                json_payload["results"].append(_event)
     return json_payload
 
 
@@ -83,8 +109,27 @@ def _id_to_sport(sport_id):
     return next(item for item in sports if str(item["id"]) == str(sport_id))
 
 
-def _get_upcoming_events(sport_id, league_id):
-    return resolve_via_api(_get("api", "upcoming") + "?sport_id=" + str(sport_id) + "&league_id=" + str(league_id))
+def _get_upcoming_events(api, sport_id, league_id):
+    return resolve_via_api(_get("api", api, "upcoming") + "?sport_id=" + str(sport_id) + "&league_id=" + str(league_id))
+
+
+def _get_inplay_events(api, sport_id, league_id):
+    return resolve_via_api(_get("api", api, "inplay") + "?sport_id=" + str(sport_id) + "&league_id=" + str(league_id))
+
+
+def _get_ended_events(api, sport_id, league_id):
+    now = date_to_string()
+    now = now[0:4] + now[5:7] + now[8:10]
+    return resolve_via_api(
+        _get("api", api, "ended") +
+        "?sport_id=" + str(sport_id) +
+        "&league_id=" + str(league_id) +
+        "&day=" + now
+    )
+
+
+def _get_event(api, event_id):
+    return resolve_via_api(_get("api", api, "event") + "?event_id=" + str(event_id))
 
 
 def _get_event_result_betfair(event_id):
@@ -150,7 +195,18 @@ class Processor(GenericJsonProcessor):
                         "provider_info": self._get_provider_info(_event)
                     })
 
-        return incidents
+        # it's unfeasible to maintain a list of applicable leagues. We attempt normalization
+        # and only forward incidents that can be normalized (witness will still re-normalize as
+        # dataproxies normally don't do that
+        normalized = []
+        normalizer = IncidentsNormalizer(chain=_get("network"))
+        for incident in incidents:
+            try:
+                normalized.append(normalizer.normalize(incident, True))
+            except NotNormalizableException as e:
+                logging.getLogger(__name__).debug(str(e.__class__.__name__) + ": " + str(incident["id"]))
+                pass
+        return normalized
 
     def _process_source(self, source, source_type):
         if source_type == "string":
@@ -187,11 +243,11 @@ class Processor(GenericJsonProcessor):
             }
         elif call == "in_progress":
             return {
-                "whistle_start_time": date_to_string()
+                "whistle_start_time": None
             }
         elif call == "finished":
             return {
-                "whistle_end_time": date_to_string()
+                "whistle_end_time": None
             }
         else:
             return {"reason": None}
@@ -213,27 +269,33 @@ class BackgroundThread():
     def getName(self):
         return "BackgroundPoller_" + PLAIN_NAME
 
+    def _send(self, results):
+        try:
+            response = requests.post(
+                "http://localhost:" + str(Config.get("wsgi", "port")) + "/push/" + NAME,
+                files={"json": json.dumps(results)}
+            )
+            if response and response.content == _get("processor", "response").encode() and response.status_code == 200:
+                pass
+            else:
+                raise Exception("Pull could not be pushed, response " + str(response.status_code))
+        except Exception as e:
+            logging.getLogger(self.getName()).warning("Fetching events failed ... error below ... continueing with next")
+            logging.getLogger(self.getName()).exception(e)
+
     def execute(self):
+        api = "general"
         leagues = _get(
             "recognize",
             "leagues"
         )
         for league in leagues:
-            try:
-                results = _get_upcoming_events(league["sport_id"], league["id"])
-                response = requests.post(
-                    "http://localhost:" + str(Config.get("wsgi", "port")) + "/push/" + PLAIN_NAME,
-                    files={"json": json.dumps(results)}
-                )
-                if response and response.content == _get("processor", "response").encode() and response.status_code == 200:
-                    pass
-                else:
-                    raise Exception("Pull could not be pushed, response " + str(response.status_code))
-            except Exception as e:
-                logging.getLogger(self.getName()).warning("Fetching events failed ... error below ... continueing with next")
-                logging.getLogger(self.getName()).exception(e)
+            #self._send(_get_upcoming_events(api, league["sport_id"], league["id"]))
+            #self._send(_get_inplay_events(api, league["sport_id"], league["id"]))
+            self._send(_get_ended_events(api, league["sport_id"], league["id"]))
 
     def run(self):
+        sleep(2)
         while True:
             try:
                 logging.getLogger(self.getName()).info("Fetching events ...")
@@ -298,6 +360,6 @@ class CommandLineInterface():
             if _parse_id(eventgroup) is None:
                 return _as_list(self._get_leagues(sport, country), eventgroup)
             else:
-                return resolve_via_api(_get("api", "upcoming2") + "?sport_id=" + sport)
+                return resolve_via_api(_get("api", "general", "upcoming") + "?sport_id=" + sport)
         else:
             return _as_list(_get_sports_to_track())
