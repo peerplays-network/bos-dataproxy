@@ -69,11 +69,6 @@ def create_app(raw_store, processed_store, incident_store):
             except AttributeError:
                 pass
 
-        # start all background threads
-        for t in background_threads:
-            logging.getLogger(__name__).info("Starting thread for {}".format(t))
-            t.start()
-
         logging.getLogger(__name__).info("Adding provider " + key + ", route " + "/push/" + key)
         api.add_route(
             "/push/" + key,
@@ -86,6 +81,11 @@ def create_app(raw_store, processed_store, incident_store):
                 incident_store
             )
         )
+
+    # start all background threads
+    for t in background_threads:
+        logging.getLogger(__name__).info("Starting thread for {}".format(t))
+        t.start()
 
     from .routes.isalive import IsAlive
     api.add_route("/isalive", IsAlive(incident_store, background_threads))
