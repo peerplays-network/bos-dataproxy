@@ -68,7 +68,6 @@ def create_app(raw_store, processed_store, incident_store):
                 )
             except AttributeError:
                 pass
-        logging.getLogger(__name__).info(" ... processor " + _processor.__class__)
 
         # start all background threads
         for t in background_threads:
