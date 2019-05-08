@@ -42,14 +42,17 @@ def create_app(raw_store, processed_store, incident_store):
     background_threads = []
 
     for key, value in provider_config.items():
+        logging.getLogger(__name__).info("Configuring provider " + key + " ...")
         if "processor" in value and value["processor"]["type"] == "generic":
             _processor = GenericJsonProcessor(value["processor"].get("timezone", None))
+            logging.getLogger(__name__).info(" ... processor " + _processor.__class__.__name__)
         else:
             module_to_load = Config.get("providers", key, "module", default=key)
             try:
                 module = __import__(module_to_load, fromlist=[module_to_load])
             except ModuleNotFoundError:
                 module = __import__("dataproxy.provider.modules." + module_to_load, fromlist=[module_to_load])
+            logging.getLogger(__name__).info(" ... external module " + module_to_load)
             _class = getattr(module, "Processor")
             _processor = _class()
 
@@ -65,6 +68,7 @@ def create_app(raw_store, processed_store, incident_store):
                 )
             except AttributeError:
                 pass
+        logging.getLogger(__name__).info(" ... processor " + _processor.__class__)
 
         # start all background threads
         for t in background_threads:
