@@ -38,7 +38,7 @@ def date_to_string(date_object=None):
                 date_object.timestamp())
 
 
-def string_to_date(date_string):
+def string_to_date(date_string=None):
     """ assumes rfc3339 conform string and creates date object """
     if date_string is None:
         date_time_object = datetime.utcnow()

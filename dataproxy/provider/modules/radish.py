@@ -4,14 +4,16 @@ import logging
 import requests
 import json
 import os
+from datetime import timedelta
 
 from ..json.processor import GenericJsonProcessor
 from ... import Config
 from ... import utils
 from ...app import get_push_receiver
-from ...datestring import date_to_string
+from ...datestring import date_to_string, string_to_date
 
 from bookiesports.normalize import IncidentsNormalizer, NotNormalizableException
+
 
 """
     Provider module, actual name obfuscated
@@ -109,8 +111,40 @@ def _id_to_sport(sport_id):
     return next(item for item in sports if str(item["id"]) == str(sport_id))
 
 
-def _get_upcoming_events(api, sport_id, league_id):
-    return resolve_via_api(_get("api", api, "upcoming") + "?sport_id=" + str(sport_id) + "&league_id=" + str(league_id))
+def _get_upcoming_events(api, sport_id, league_id, until=None):
+    if until is None:
+        reponse = resolve_via_api(_get("api", api, "upcoming") + "?sport_id=" + str(sport_id) + "&league_id=" + str(league_id))
+    else:
+        if type(until) == int:
+            until = string_to_date() + timedelta(days=until)
+        else:
+            until = string_to_date(until)
+        now = string_to_date()
+        if (now < until):
+            results_list = []
+            while now < until:
+                day = now.strftime("%Y%m%d")
+                results_list.append(
+                    resolve_via_api(
+                        _get("api", api, "upcoming") +
+                        "?sport_id=" + str(sport_id) +
+                        "&league_id=" + str(league_id) +
+                        "&day=" + day
+                    )
+                )
+                now = now + timedelta(days=1)
+            results = {
+                "success": results_list[0]["success"],
+                "results": []
+            }
+            for _results in results_list:
+                for _event in _results["results"]:
+                    results["results"].append(_event)
+            reponse = results
+        else:
+            raise Exception("Can only query into the future")
+    reponse["api"] = api
+    return reponse
 
 
 def _get_inplay_events(api, sport_id, league_id):
@@ -129,11 +163,11 @@ def _get_ended_events(api, sport_id, league_id):
 
 
 def _get_event(api, event_id):
-    return resolve_via_api(_get("api", api, "event") + "?event_id=" + str(event_id))
-
-
-def _get_event_result_betfair(event_id):
-    return resolve_via_api(_get("api", "results") + "?event_id=" + event_id)
+    json_payload = resolve_via_api(_get("api", api, "event") + "?event_id=" + str(event_id))
+    if json_payload["success"] == 1 and json_payload["results"][0]["id"] == event_id:
+        return json_payload["results"][0]
+    else:
+        raise Exception("Event not found")
 
 
 class Processor(GenericJsonProcessor):
@@ -170,7 +204,7 @@ class Processor(GenericJsonProcessor):
                 pass
 
             call = self._mapStatus(_event["time_status"])
-            arguments = self._getArgument(call, incident_id)
+            arguments = self._getArgument(call, incident_id, _event["id"])
 
             incidents.append({
                 "id": incident_id,
@@ -179,27 +213,26 @@ class Processor(GenericJsonProcessor):
                 "provider_info": self._get_provider_info(_event)
             })
 
-            if call == "finish":
-                # get results
-                event_details = _get_event_result_betfair(_event["id"])
-                if event_details["success"] == 1:
-                    result = event_details["results"][0]["ss"].split("-")
-                    result = {
-                        "home_score": result[0],
-                        "away_score": result[1]
-                    }
-                    incidents.append({
-                        "id": incident_id,
-                        "call": "result",
-                        "arguments": result,
-                        "provider_info": self._get_provider_info(_event)
-                    })
+            if call == "create" and "etfa" in source_json.get("api", None):
+                # resolve dbmgs
+                betfair_event = _get_event("etfa", _event["id"])
+                print(betfair_event)
+
+            elif call == "finish":
+                call = "result"
+                arguments = self._getArgument(call, incident_id, _event["id"])
+                incidents.append({
+                    "id": incident_id,
+                    "call": call,
+                    "arguments": arguments,
+                    "provider_info": self._get_provider_info(_event)
+                })
 
         # it's unfeasible to maintain a list of applicable leagues. We attempt normalization
         # and only forward incidents that can be normalized (witness will still re-normalize as
         # dataproxies normally don't do that
         normalized = []
-        normalizer = IncidentsNormalizer(chain=_get("network"))
+        normalizer = IncidentsNormalizer(chain=_get("bookiesports_chain"))
         for incident in incidents:
             try:
                 normalized.append(normalizer.normalize(incident, True))
@@ -227,7 +260,7 @@ class Processor(GenericJsonProcessor):
         status_map = {
             "0": "create",  # Not Started,
             "1": "in_progress",  # InPlay
-            "3": "finished",  # Ended
+            "3": "finish",  # Ended
             "4": "canceled",  # Postponed
             "5": "canceled",  # Cancelled
             "8": "canceled",  # Abandoned
@@ -236,25 +269,51 @@ class Processor(GenericJsonProcessor):
         }
         return status_map.get(status, "canceled")
 
-    def _getArgument(self, call, incident_id):
+    def _getArgument(self, call, incident_id, event_id=None):
+        resolve_whistle_times = False
+
         if call == "create":
             return {
                 "season": incident_id["start_time"][0:4]
             }
         elif call == "in_progress":
+            if event_id is not None:
+                event_details = _get_event("general", event_id)
+                if resolve_whistle_times and "inplay_created_at" in event_details:
+                    return {
+                        "whistle_end_time": date_to_string(int(event_details["inplay_created_at"]))
+                    }
             return {
                 "whistle_start_time": None
             }
-        elif call == "finished":
+        elif call == "finish":
+            if event_id is not None:
+                event_details = _get_event("general", event_id)
+                if resolve_whistle_times and "confirmed_at" in event_details:
+                    return {
+                        "whistle_end_time": date_to_string(int(event_details["confirmed_at"]))
+                    }
             return {
                 "whistle_end_time": None
             }
-        else:
+        elif call == "result":
+            if event_id is None:
+                raise Exception("Event id is needed for resolving")
+            event_details = _get_event("general", event_id)
+            result = event_details["ss"].split("-")
+            return {
+                "home_score": result[0],
+                "away_score": result[1]
+            }
+            raise Exception("Result not found")
+        elif call == "canceled":
             return {"reason": None}
+        else:
+            raise Exception("Unknown call: " + str(call))
 
     def _incident_of_interest(self, incident):
         # check history, make sure it doesnt explode
-        giid = incident["unique_string"] + incident["provider_info"]["name"]
+        giid = incident["unique_string"] + "_" + incident["provider_info"]["name"]
         found = giid in EVENTS_HISTORY
         if not found:
             keys = list(EVENTS_HISTORY.keys())
@@ -290,8 +349,8 @@ class BackgroundThread():
             "leagues"
         )
         for league in leagues:
-            #self._send(_get_upcoming_events(api, league["sport_id"], league["id"]))
-            #self._send(_get_inplay_events(api, league["sport_id"], league["id"]))
+            self._send(_get_upcoming_events(api, league["sport_id"], league["id"], 3))
+            self._send(_get_inplay_events(api, league["sport_id"], league["id"]))
             self._send(_get_ended_events(api, league["sport_id"], league["id"]))
 
     def run(self):
