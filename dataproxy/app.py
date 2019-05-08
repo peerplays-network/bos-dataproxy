@@ -50,7 +50,7 @@ def create_app(raw_store, processed_store, incident_store):
             module_to_load = Config.get("providers", key, "module", default=key)
             try:
                 module = __import__(module_to_load, fromlist=[module_to_load])
-            except ModuleNotFoundError:
+            except Exception:  # ModuleNotFoundError
                 module = __import__("dataproxy.provider.modules." + module_to_load, fromlist=[module_to_load])
             logging.getLogger(__name__).info(" ... external module " + module_to_load)
             _class = getattr(module, "Processor")
