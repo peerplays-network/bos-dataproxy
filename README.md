@@ -13,16 +13,26 @@ pushes to the dataproxy.
 ## Prepare server
 
 The dataproxy is utilizing the filesystem and a MondoDB instance for achiving. Please install
-before running the dataproxy.
+before running the dataproxy. Gunicorn Python web server is used app the application.
+
+```
+apt install gunicorn mongodb-server
+```
+
+Installing Python Virtual Environement is required to run the application
+
+```
+apt -y intall virtualenv
+```
 
 ## Development use
 
 Please note that the installation steps can change since this software is work in progress.
 
-setup.sh
+`setup.sh`
 	Ensures that the given command is executed within a virtual environment
 
-run_dev_server.sh
+`run_dev_server.sh`
 	Starts the dataproxy wsgi and listens to pushes. Automatic code reloading is enabled.
 
 provider_service.sh provider_name command
