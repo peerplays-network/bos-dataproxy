@@ -25,6 +25,12 @@ Installing Python Virtual Environement is required to run the application
 apt -y intall virtualenv
 ```
 
+All in one command-line
+
+```
+apt intall -y gunicorn mongodb-server virtualenv python3 git htop mosh
+```
+
 ## Development use
 
 Please note that the installation steps can change since this software is work in progress.
