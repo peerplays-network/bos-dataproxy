@@ -6,10 +6,12 @@ service
 pika
 jsonschema
 strict_rfc3339
-pyyaml==5.1
+pyyaml==5.2
 pytz
 click
 
 bookiesports
 bos-incidents>=0.1.0
 pycryptodome==3.8.0
+
+ecdsa>=0.14 # not directly required, pinned by Snyk to avoid a vulnerability
